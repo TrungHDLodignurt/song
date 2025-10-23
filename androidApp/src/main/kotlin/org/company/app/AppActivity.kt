@@ -21,9 +21,7 @@ import androidx.compose.ui.unit.dp
 import org.company.app.presentation.MediaController
 import org.company.app.presentation.MediaViewModel
 
-// --- IMPORT CHÍNH XÁC NẰM Ở ĐÂY ---
-// (Mặc kệ nó nếu nó vẫn báo đỏ)
-import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
 
 class AppActivity : ComponentActivity() {
@@ -46,11 +44,9 @@ fun MusicPlayerApp() { // <-- Đã đổi tên
 
             val coroutineScope = rememberCoroutineScope()
 
-            // --- ĐÂY LÀ DÒNG SỬA LỖI CRASH ---
-            val viewModel: MediaViewModel = koinViewModel(
 
+            val viewModel: MediaViewModel = koinInject<MediaViewModel>(
                 parameters = { parametersOf(coroutineScope) }
-
             )
 
             val state = viewModel.state.collectAsState()

@@ -10,7 +10,7 @@ plugins {
 }
 
 android {
-    namespace = "org.company.app"
+    namespace = "org.company.app.android"
     compileSdk = 36
 
     defaultConfig {

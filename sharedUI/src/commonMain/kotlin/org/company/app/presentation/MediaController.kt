@@ -32,13 +32,13 @@ import androidx.compose.ui.unit.sp
 // --- CÁC IMPORT MỚI ĐỂ DÙNG RESOURCES ---
 import org.jetbrains.compose.resources.painterResource
 import song.sharedui.generated.resources.Res
-import song.sharedui.generated.resources.back_svgrepo_com
-import song.sharedui.generated.resources.hamburger_menu_svgrepo_com
-import song.sharedui.generated.resources.heart_svgrepo_com
+import song.sharedui.generated.resources.back
+import song.sharedui.generated.resources.ham
+import song.sharedui.generated.resources.heart
 import song.sharedui.generated.resources.heartfill
-import song.sharedui.generated.resources.next_svgrepo_com
-import song.sharedui.generated.resources.pause_svgrepo_com
-import song.sharedui.generated.resources.play_svgrepo_com
+import song.sharedui.generated.resources.next
+import song.sharedui.generated.resources.pause
+import song.sharedui.generated.resources.play
 
 private val controllerBackgroundColor = Color(0xFF2E204D)
 private val iconTintColor = Color.White
@@ -131,7 +131,7 @@ fun MediaController(
             IconButton(onClick = { onIntent(MediaIntent.OnPlaylistClick) }) {
                 Icon(
                     // --- ĐÃ THAY ĐỔI ---
-                    painter = painterResource(Res.drawable.hamburger_menu_svgrepo_com),
+                    painter = painterResource(Res.drawable.ham),
                     contentDescription = "Playlist",
                     tint = iconTintColor,
                     modifier = Modifier.size(28.dp)
@@ -145,7 +145,7 @@ fun MediaController(
             ) {
                 Icon(
                     // --- ĐÃ THAY ĐỔI ---
-                    painter = painterResource(Res.drawable.back_svgrepo_com),
+                    painter = painterResource(Res.drawable.back),
                     contentDescription = "Previous",
                     tint = if (state.hasPrevious) iconTintColor else iconTintColor.copy(alpha = 0.3f),
                     modifier = Modifier.size(36.dp)
@@ -162,8 +162,8 @@ fun MediaController(
                 Icon(
                     // --- ĐÃ THAY ĐỔI ---
                     painter = painterResource(
-                        if (state.isPlaying) Res.drawable.pause_svgrepo_com
-                        else Res.drawable.play_svgrepo_com
+                        if (state.isPlaying) Res.drawable.pause
+                        else Res.drawable.play
                     ),
                     contentDescription = if (state.isPlaying) "Pause" else "Play",
                     tint = iconTintColor,
@@ -178,7 +178,7 @@ fun MediaController(
             ) {
                 Icon(
                     // --- ĐÃ THAY ĐỔI ---
-                    painter = painterResource(Res.drawable.next_svgrepo_com),
+                    painter = painterResource(Res.drawable.next),
                     contentDescription = "Next",
                     tint = if (state.hasNext) iconTintColor else iconTintColor.copy(alpha = 0.3f),
                     modifier = Modifier.size(36.dp)
@@ -190,8 +190,8 @@ fun MediaController(
                 Icon(
                     // --- ĐÃ THAY ĐỔI ---
                     painter = painterResource(
-                        if (state.isFavorite) Res.drawable.heart_svgrepo_com
-                        else Res.drawable.heartfill
+                        if (state.isFavorite) Res.drawable.heartfill
+                        else Res.drawable.heart
                     ),
                     contentDescription = "Favorite",
                     tint = if (state.isFavorite) Color.Red else iconTintColor,

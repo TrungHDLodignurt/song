@@ -25,7 +25,7 @@ sealed interface MediaIntent {
     data object OnPreviousClick : MediaIntent
     data class OnSeek(val positionMs: Long) : MediaIntent
     data object OnFavoriteClick : MediaIntent
-    data object OnPlaylistClick : MediaIntent // Nút menu bên trái (theo yêu cầu)
+    data object OnPlaylistClick : MediaIntent
 }
 
 sealed interface MediaEvent {
