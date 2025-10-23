@@ -10,17 +10,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-// V-V-V--- Imports đã được đổi sang MATERIAL 3 ---V-V-V
-import androidx.compose.material3.*
-// V-V-V--- Imports icon chính xác là "Filled" ---V-V-V
-import androidx.compose.material.icons.Icons // Cần cho "Icons.Filled"
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,8 +29,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// Màu sắc giả lập cho controller (bạn có thể thay đổi)
-// (Sử dụng MaterialTheme.colorScheme sẽ tốt hơn)
+// --- CÁC IMPORT MỚI ĐỂ DÙNG RESOURCES ---
+import org.jetbrains.compose.resources.painterResource
+import song.sharedui.generated.resources.Res
+import song.sharedui.generated.resources.back_svgrepo_com
+import song.sharedui.generated.resources.hamburger_menu_svgrepo_com
+import song.sharedui.generated.resources.heart_svgrepo_com
+import song.sharedui.generated.resources.heartfill
+import song.sharedui.generated.resources.next_svgrepo_com
+import song.sharedui.generated.resources.pause_svgrepo_com
+import song.sharedui.generated.resources.play_svgrepo_com
+
 private val controllerBackgroundColor = Color(0xFF2E204D)
 private val iconTintColor = Color.White
 
@@ -57,6 +60,8 @@ fun MediaController(
             .padding(vertical = 12.dp, horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+
+        // ... (Phần 1, 2, 3: Text và Slider không thay đổi) ...
 
         // 1. Thông tin bài hát (Title & Artist)
         Text(
@@ -125,7 +130,8 @@ fun MediaController(
             // Nút Playlist (Trái)
             IconButton(onClick = { onIntent(MediaIntent.OnPlaylistClick) }) {
                 Icon(
-                    imageVector = Icons.Filled.Menu, // Đã sửa
+                    // --- ĐÃ THAY ĐỔI ---
+                    painter = painterResource(Res.drawable.hamburger_menu_svgrepo_com),
                     contentDescription = "Playlist",
                     tint = iconTintColor,
                     modifier = Modifier.size(28.dp)
@@ -138,7 +144,8 @@ fun MediaController(
                 enabled = state.hasPrevious
             ) {
                 Icon(
-                    imageVector = Icons.Filled.SkipPrevious, // Đã sửa
+                    // --- ĐÃ THAY ĐỔI ---
+                    painter = painterResource(Res.drawable.back_svgrepo_com),
                     contentDescription = "Previous",
                     tint = if (state.hasPrevious) iconTintColor else iconTintColor.copy(alpha = 0.3f),
                     modifier = Modifier.size(36.dp)
@@ -153,7 +160,11 @@ fun MediaController(
                     .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(50))
             ) {
                 Icon(
-                    imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, // Đã sửa
+                    // --- ĐÃ THAY ĐỔI ---
+                    painter = painterResource(
+                        if (state.isPlaying) Res.drawable.pause_svgrepo_com
+                        else Res.drawable.play_svgrepo_com
+                    ),
                     contentDescription = if (state.isPlaying) "Pause" else "Play",
                     tint = iconTintColor,
                     modifier = Modifier.size(40.dp)
@@ -166,7 +177,8 @@ fun MediaController(
                 enabled = state.hasNext
             ) {
                 Icon(
-                    imageVector = Icons.Filled.SkipNext, // Đã sửa
+                    // --- ĐÃ THAY ĐỔI ---
+                    painter = painterResource(Res.drawable.next_svgrepo_com),
                     contentDescription = "Next",
                     tint = if (state.hasNext) iconTintColor else iconTintColor.copy(alpha = 0.3f),
                     modifier = Modifier.size(36.dp)
@@ -176,7 +188,11 @@ fun MediaController(
             // Nút Favorite (Phải)
             IconButton(onClick = { onIntent(MediaIntent.OnFavoriteClick) }) {
                 Icon(
-                    imageVector = if (state.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, // Đã sửa
+                    // --- ĐÃ THAY ĐỔI ---
+                    painter = painterResource(
+                        if (state.isFavorite) Res.drawable.heart_svgrepo_com
+                        else Res.drawable.heartfill
+                    ),
                     contentDescription = "Favorite",
                     tint = if (state.isFavorite) Color.Red else iconTintColor,
                     modifier = Modifier.size(28.dp)
@@ -186,12 +202,10 @@ fun MediaController(
     }
 }
 
-/**
- * Hàm tiện ích để chuyển Long mili giây sang dạng "01:30"
- */
 private fun formatTime(ms: Long): String {
     val totalSeconds = ms / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return String.format("%02d:%02d", minutes, seconds)
+    val minutes = (totalSeconds / 60).toString()
+    val seconds = (totalSeconds % 60).toString()
+
+    return "${minutes.padStart(2, '0')}:${seconds.padStart(2, '0')}"
 }

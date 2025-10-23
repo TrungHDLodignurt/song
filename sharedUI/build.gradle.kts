@@ -1,4 +1,5 @@
 import org.jetbrains.compose.ExperimentalComposeLibrary
+import org.jetbrains.compose.compose
 import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
@@ -44,7 +45,8 @@ kotlin {
             implementation(libs.coil.network.ktor)
             implementation(libs.multiplatformSettings)
             implementation(libs.room.runtime)
-            implementation(libs.androidx.compose.material.icons.extended)
+            implementation(libs.koin.core)
+
         }
 
         commonTest.dependencies {

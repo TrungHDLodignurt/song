@@ -1,127 +1,99 @@
 package org.company.app.domain.player
 
+import kotlinx.coroutines.flow.Flow
 import android.content.Context
 import android.media.MediaPlayer
-import kotlinx.coroutines.CoroutineScope
+import androidx.core.net.toUri
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-
-actual class AndroidPlayerService(
-    // Chúng ta cần Context để khởi tạo MediaPlayer
+import kotlin.time.Duration.Companion.milliseconds
+class AndroidPlayerService(
     private val context: Context
 ) : IPlayerService {
-
     private var mediaPlayer: MediaPlayer? = null
-    private var isPrepared = false
-    private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
-    private var progressJob: Job? = null
+    private var positionJob: Job? = null
 
-    // --- State Flows ---
-    private val _playbackState = MutableStateFlow(false) // false = paused
+    private val _playbackState = MutableStateFlow(false)
     override fun playbackState(): Flow<Boolean> = _playbackState.asStateFlow()
 
     private val _onSongCompleted = MutableSharedFlow<Unit>()
-    override fun onSongCompleted(): Flow<Unit> = _onSongCompleted.asSharedFlow()
-
-    // --- Hàm điều khiển ---
+    override fun onSongCompleted(): Flow<Unit> = _onSongCompleted
 
     override suspend fun prepare(url: String) {
-        stopAndReleaseInternal() // Dọn dẹp player cũ (nếu có)
-        isPrepared = false
+        stopAndRelease() // Dọn dẹp player cũ (nếu có)
+
         mediaPlayer = MediaPlayer().apply {
-            setDataSource(url)
+            setDataSource(context, url.toUri())
             setOnPreparedListener {
-                isPrepared = true
-                // Báo cho UI biết trạng thái mới
                 _playbackState.value = false
             }
             setOnCompletionListener {
                 _playbackState.value = false
-                progressJob?.cancel()
-                serviceScope.launch {
-                    _onSongCompleted.emit(Unit)
-                }
+                positionJob?.cancel()
+                GlobalScope.launch { _onSongCompleted.emit(Unit) }
             }
-            setOnErrorListener { _, _, _ ->
-                isPrepared = false
-                _playbackState.value = false
-                true // Đã xử lý lỗi
-            }
-            prepareAsync() // Chuẩn bị bất đồng bộ
+            prepareAsync()
         }
     }
 
+    // Phát nhạc
     override fun play() {
-        if (isPrepared && mediaPlayer?.isPlaying == false) {
-            mediaPlayer?.start()
-            _playbackState.value = true
-            startProgressEmitter() // Bắt đầu phát tiến độ
-        }
+        mediaPlayer?.start()
+        _playbackState.value = true
+        startPositionUpdates() // Bắt đầu cập nhật thanh tua
     }
 
+    // Tạm dừng
     override fun pause() {
-        if (isPrepared && mediaPlayer?.isPlaying == true) {
-            mediaPlayer?.pause()
-            _playbackState.value = false
-            progressJob?.cancel() // Dừng phát tiến độ
-        }
+        mediaPlayer?.pause()
+        _playbackState.value = false
+        positionJob?.cancel() // Dừng cập nhật thanh tua
     }
 
+    // Tua nhạc
     override fun seekTo(positionMs: Long) {
-        if (isPrepared) {
-            mediaPlayer?.seekTo(positionMs.toInt())
-        }
+        mediaPlayer?.seekTo(positionMs.toInt())
     }
 
+    // Dọn dẹp
     override fun stopAndRelease() {
-        stopAndReleaseInternal()
-    }
-
-    // --- Hàm nội bộ ---
-
-    private fun stopAndReleaseInternal() {
-        progressJob?.cancel()
+        positionJob?.cancel()
         mediaPlayer?.stop()
         mediaPlayer?.release()
         mediaPlayer = null
-        isPrepared = false
         _playbackState.value = false
     }
 
-    /** Bắt đầu một coroutine để phát ra vị trí hiện tại mỗi 500ms */
-    private fun startProgressEmitter() {
-        progressJob?.cancel() // Hủy job cũ (nếu có)
-        progressJob = serviceScope.launch {
-            while (isActive) {
-                // Sẽ thêm flow phát tiến độ ở đây
-                delay(500) // Cập nhật mỗi 500ms
-            }
+    // Trả về vị trí hiện tại (dùng Flow)
+    override fun currentPositionMs(): Flow<Long> = flow {
+        // Vòng lặp này sẽ tự động bị hủy khi coroutine (positionJob) bị cancel
+        while (true) {
+            emit(mediaPlayer?.currentPosition?.toLong() ?: 0L)
+            delay(100.milliseconds) // Cập nhật 10 lần mỗi giây
         }
     }
 
-    /**
-     * (Chúng ta cần triển khai Flow này)
-     * Đây là cách phức tạp nhất, dùng callbackFlow
-     */
-    override fun currentPositionMs(): Flow<Long> = callbackFlow {
-        val job = launch(Dispatchers.Main) {
-            while (isActive) {
-                if (isPrepared && mediaPlayer?.isPlaying == true) {
-                    trySend(mediaPlayer!!.currentPosition.toLong())
-                }
-                delay(500) // Tần suất cập nhật
+    // Hàm nội bộ để bắt đầu/dừng Flow cập nhật vị trí
+    @OptIn(DelicateCoroutinesApi::class)
+    private fun startPositionUpdates() {
+        positionJob?.cancel()
+        positionJob = GlobalScope.launch(Dispatchers.Main) {
+            // Khởi chạy flow `currentPositionMs`
+            // ViewModel sẽ thu thập (collect) từ flow này
+            currentPositionMs().collect {
+                // Chúng ta không cần làm gì ở đây,
+                // chỉ cần đảm bảo coroutine này chạy
+                if (!isActive) return@collect
             }
         }
-        awaitClose { job.cancel() } // Tự động hủy job khi flow bị hủy
     }
 }

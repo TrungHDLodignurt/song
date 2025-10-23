@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 import org.company.app.domain.model.Song
 import org.company.app.domain.player.IPlayerService
 import org.company.app.domain.repository.MusicRepository
-
+// koin
 class MediaViewModel(
     private val musicRepository: MusicRepository, // Phụ thuộc vào Repository
     private val playerService: IPlayerService,   // Phụ thuộc vào Player Service
