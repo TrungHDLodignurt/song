@@ -43,12 +43,30 @@ class MediaViewModel(
             is MediaIntent.OnPlayPauseClick -> togglePlayPause()
             is MediaIntent.OnNextClick -> loadSongAtIndex(currentIndex + 1)
             is MediaIntent.OnPreviousClick -> loadSongAtIndex(currentIndex - 1)
+            is MediaIntent.OnSeeking -> {
+                _state.update {
+                    it.copy(
+                        isSeeking = true,
+                        seekingPositionMs = intent.positionMs
+                    )
+                }
+            }
             is MediaIntent.OnFavoriteClick -> toggleFavorite()
             is MediaIntent.OnPlaylistClick -> {
                 // Tạm thời chưa làm gì (theo yêu cầu)
                 println("Playlist clicked")
             }
-            is MediaIntent.OnSeek -> playerService.seekTo(intent.positionMs)
+            is MediaIntent.OnSeekEnd -> {
+                playerService.seekTo(intent.positionMs)
+                // Neo UI tại vị trí người dùng chọn, tránh giật khi vừa thả
+                _state.update {
+                    it.copy(
+                        currentPositionMs = intent.positionMs,
+                        isSeeking = false,
+                        seekingPositionMs = 0L
+                    )
+                }
+            }
         }
     }
 
@@ -107,7 +125,9 @@ class MediaViewModel(
                     isPlaying = false, // Luôn bắt đầu ở trạng thái pause
                     isFavorite = false, // Reset favorite (theo yêu cầu)
                     hasPrevious = index > 0,
-                    hasNext = index < songList.size - 1
+                    hasNext = index < songList.size - 1,
+                    isSeeking = false,
+                    seekingPositionMs = 0L
                 )
             }
 
@@ -134,7 +154,9 @@ class MediaViewModel(
             // Lắng nghe tiến độ (vị trí hiện tại)
             playerService.currentPositionMs()
                 .onEach { position ->
-                    _state.update { it.copy(currentPositionMs = position) }
+                    if (!state.value.isSeeking) {
+                        _state.update { it.copy(currentPositionMs = position) }
+                    }
                 }
                 .launchIn(viewModelScope),
 

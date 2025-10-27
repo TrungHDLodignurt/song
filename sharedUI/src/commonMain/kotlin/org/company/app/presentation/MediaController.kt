@@ -10,11 +10,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalMinimumInteractiveComponentEnforcement
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,29 +30,30 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.CompositionLocalProvider
 
-// --- CÁC IMPORT MỚI ĐỂ DÙNG RESOURCES ---
+// --- IMPORTS BỔ SUNG CẦN THIẾT ---
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.indication // Thêm
+import androidx.compose.foundation.shape.CircleShape // Thêm
+import androidx.compose.foundation.layout.Box // Thêm
+import androidx.compose.foundation.gestures.detectTapGestures
 import org.jetbrains.compose.resources.painterResource
-import song.sharedui.generated.resources.Res
-import song.sharedui.generated.resources.back
-import song.sharedui.generated.resources.ham
-import song.sharedui.generated.resources.heart
-import song.sharedui.generated.resources.heartfill
-import song.sharedui.generated.resources.next
-import song.sharedui.generated.resources.pause
-import song.sharedui.generated.resources.play
+import song.sharedui.generated.resources.*
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 
 private val controllerBackgroundColor = Color(0xFF2E204D)
 private val iconTintColor = Color.White
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MediaController(
     state: MediaState,
     onIntent: (MediaIntent) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var isSeeking by remember { mutableStateOf(false) }
-    var seekPosition by remember { mutableStateOf(0f) }
+    val interactionSource = remember { MutableInteractionSource() }
 
     Column(
         modifier = modifier
@@ -61,9 +64,6 @@ fun MediaController(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
-        // ... (Phần 1, 2, 3: Text và Slider không thay đổi) ...
-
-        // 1. Thông tin bài hát (Title & Artist)
         Text(
             text = state.currentSong?.title ?: "Loading...",
             color = Color.White,
@@ -81,47 +81,78 @@ fun MediaController(
         )
         Spacer(Modifier.height(8.dp))
 
-        // 2. Thanh Slider
-        Column(Modifier.fillMaxWidth()) {
-            Slider(
-                value = if (isSeeking) seekPosition else state.currentPositionMs.toFloat(),
-                onValueChange = { newValue ->
-                    isSeeking = true
-                    seekPosition = newValue
-                },
-                onValueChangeFinished = {
-                    onIntent(MediaIntent.OnSeek(seekPosition.toLong()))
-                    isSeeking = false
-                },
-                valueRange = 0f..(state.durationMs.toFloat().coerceAtLeast(1f)),
-                colors = SliderDefaults.colors(
-                    thumbColor = Color.White,
-                    activeTrackColor = Color.White,
-                    inactiveTrackColor = Color.Gray.copy(alpha = 0.5f)
-                )
-            )
-
-            // 3. Thời gian (Current / Duration)
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+        CompositionLocalProvider(LocalMinimumInteractiveComponentEnforcement provides false) {
+            var sliderWidthPx by remember { mutableStateOf(0) }
+            var lastDragValue by remember { mutableStateOf(0L) }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { coords -> sliderWidthPx = coords.size.width }
+                    .pointerInput(state.durationMs) {
+                        detectTapGestures { offset ->
+                            val dur = state.durationMs
+                            if (dur > 0 && sliderWidthPx > 0) {
+                                val fraction = (offset.x / sliderWidthPx).coerceIn(0f, 1f)
+                                val posMs = (fraction * dur).toLong()
+                                lastDragValue = posMs
+                                onIntent(MediaIntent.OnSeekEnd(posMs))
+                            }
+                        }
+                    }
             ) {
-                val currentPos = if (isSeeking) seekPosition.toLong() else state.currentPositionMs
-                Text(
-                    text = formatTime(currentPos),
-                    color = iconTintColor.copy(alpha = 0.7f),
-                    fontSize = 12.sp
-                )
-                Text(
-                    text = formatTime(state.durationMs),
-                    color = iconTintColor.copy(alpha = 0.7f),
-                    fontSize = 12.sp
+                Slider(
+                    value = (
+                        if (state.isSeeking) state.seekingPositionMs
+                        else state.currentPositionMs
+                    ).toFloat(),
+                    onValueChange = { newValue ->
+                        val v = newValue.toLong()
+                        lastDragValue = v
+                        onIntent(MediaIntent.OnSeeking(v))
+                    },
+                    onValueChangeFinished = {
+                        onIntent(MediaIntent.OnSeekEnd(lastDragValue))
+                    },
+                    valueRange = 0f..(state.durationMs.toFloat().coerceAtLeast(1f)),
+                    interactionSource = interactionSource,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .indication(interactionSource, null),
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color.Transparent,
+                        activeTrackColor = Color.White,
+                        inactiveTrackColor = Color.Gray.copy(alpha = 0.5f)
+                    ),
+                    thumb = {
+                        Box(
+                            Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(Color.White)
+                                .indication(interactionSource, null)
+                        )
+                    }
                 )
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            val displayPos = if (state.isSeeking) state.seekingPositionMs else state.currentPositionMs
+            Text(
+                text = formatTime(displayPos),
+                color = iconTintColor.copy(alpha = 0.7f),
+                fontSize = 12.sp
+            )
+            Text(
+                text = formatTime(state.durationMs),
+                color = iconTintColor.copy(alpha = 0.7f),
+                fontSize = 12.sp
+            )
+        }
 
-        // 4. Hàng nút điều khiển
+        Spacer(Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -138,7 +169,6 @@ fun MediaController(
                 )
             }
 
-            // Nút Previous
             IconButton(
                 onClick = { onIntent(MediaIntent.OnPreviousClick) },
                 enabled = state.hasPrevious
@@ -151,8 +181,6 @@ fun MediaController(
                     modifier = Modifier.size(36.dp)
                 )
             }
-
-            // Nút Play/Pause (Giữa, to)
             IconButton(
                 onClick = { onIntent(MediaIntent.OnPlayPauseClick) },
                 modifier = Modifier
@@ -181,7 +209,7 @@ fun MediaController(
                     painter = painterResource(Res.drawable.next),
                     contentDescription = "Next",
                     tint = if (state.hasNext) iconTintColor else iconTintColor.copy(alpha = 0.3f),
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(28.dp)
                 )
             }
 

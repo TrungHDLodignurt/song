@@ -15,7 +15,11 @@ data class MediaState(
     val isFavorite: Boolean = false, // Trạng thái favorite tạm thời (theo yêu cầu)
 
     // Trạng thái tải
-    val isLoading: Boolean = true // Mặc định là true khi VM khởi tạo
+    val isLoading: Boolean = true, // Mặc định là true khi VM khởi tạo
+
+    // Trạng thái seek cho UI dumb
+    val isSeeking: Boolean = false,
+    val seekingPositionMs: Long = 0L
 )
 
 
@@ -23,7 +27,9 @@ sealed interface MediaIntent {
     data object OnPlayPauseClick : MediaIntent
     data object OnNextClick : MediaIntent
     data object OnPreviousClick : MediaIntent
-    data class OnSeek(val positionMs: Long) : MediaIntent
+    // UI dumb: báo vị trí khi đang kéo và khi kết thúc
+    data class OnSeeking(val positionMs: Long) : MediaIntent
+    data class OnSeekEnd(val positionMs: Long) : MediaIntent
     data object OnFavoriteClick : MediaIntent
     data object OnPlaylistClick : MediaIntent
 }
